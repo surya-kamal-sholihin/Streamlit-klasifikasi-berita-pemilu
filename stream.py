@@ -1,4 +1,5 @@
 # Import Library
+!pip install scikit-learn
 import pickle
 import streamlit as st
 from sklearn.feature_extraction.text import TfidfVectorizer
