@@ -1,19 +1,17 @@
 # Import Library
 import pickle
 import streamlit as st
-import mysql.connector
+from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-# Connect to mysql server
-mydb = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="mendokusai",
-            database="streamlit",
-        )
-mycursor = mydb.cursor()
-print('Connection Established')
+# Menyambungkan ke Google Spread Sheets
+conn = st.connection('gsheets', type=GSheetsConnection)
+
+# Menghubungkan ke data spread Sheet
+existing_data = conn.read(worksheet="klasifikasi", usecols=list(range(3)), ttl=5)
+existing_data = existing_data.dropna(how="all")
+
 
 #load save model
 model_NB = pickle.load(open('model_NB.sav', 'rb'))
@@ -58,11 +56,24 @@ if menu == 'Klasifikasi' :
     if (predict_SVM == 1):
       detect_SVM = 'Real News'
 
-    # memasukan ke dalam data base
-    sql = "insert into hasil(berita, hasilNB, hasilSVM) values(%s,%s,%s)"
-    val = (teks, detect_NB, detect_SVM)
-    mycursor.execute(sql, val)
-    mydb.commit()
+    # memasukan data ke dataBaru
+    dataBaru = pd.DataFrame(
+      [
+        {
+          "Berita" : teks,
+          "HasilNB" : detect_NB,
+          "HasilSVM" : detect_SVM
+        }
+      ]
+    )
+
+    # menggabungkan dataBaru ke dalam data sekarang
+    updated_df = pd.concat([existing_data, dataBaru], ignore_index=True)
+
+    # update data spread sheet dengan data sekarang
+    conn.update(worksheet="klasifikasi", data=updated_df)
+
+    st.success("data spreadsheet sudah di perbarui")
     
     #hasil
     st.success(f'Prediksi Naive Bayes = {detect_NB}')
@@ -71,17 +82,5 @@ if menu == 'Klasifikasi' :
 
 # menunjukan hasil
 if menu == 'History':
-  st.subheader('Hasil Prediksi')
-  mycursor.execute('select * from hasil')
-  result = mycursor.fetchall()
-  df = pd.DataFrame(result, columns=mycursor.column_names)
-  st.dataframe(df)
-  
+  st.dataframe(existing_data)
   # delete
-  id = st.number_input('masukan angka')
-  if st.button('Delete'):
-    sql = 'delete from hasil where id = %s'
-    val = (id,)
-    mycursor.execute(sql, val)
-    mydb.commit()
-    st.success('Record Deleted Successfully!!!')
