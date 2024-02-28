@@ -72,14 +72,12 @@ if menu == 'Klasifikasi' :
 
     # update data spread sheet dengan data sekarang
     conn.update(worksheet="klasifikasi", data=updated_df)
-
-    st.success("data spreadsheet sudah di perbarui")
     
     #hasil
     st.success(f'Prediksi Naive Bayes = {detect_NB}')
     st.success(f'Prediksi Support Vector Machine = {detect_SVM}')
-    st.success('Record Created Successfully!!!')
-
+    st.success("data spreadsheet sudah di perbarui")
+    
 # menunjukan hasil
 if menu == 'History':
   st.dataframe(existing_data)
