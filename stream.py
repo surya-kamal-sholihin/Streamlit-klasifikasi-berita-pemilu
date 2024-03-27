@@ -9,7 +9,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 conn = st.connection('gsheets', type=GSheetsConnection)
 
 # Menghubungkan ke data spread Sheet
-existing_data = conn.read(worksheet="latihan", usecols=list(range(3)), ttl=5)
+existing_data = conn.read(worksheet="klasifikasi", usecols=list(range(3)), ttl=5)
 existing_data = existing_data.dropna(how="all")
 
 # Text Processing
