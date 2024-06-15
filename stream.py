@@ -1,19 +1,19 @@
 # Import Library
 import pickle
 import streamlit as st
+from streamlit_option_menu import option_menu
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-# Menyambungkan ke Google Spread Sheets
+# database Google Spread Sheets
 conn = st.connection('gsheets', type=GSheetsConnection)
 
-# Menghubungkan ke data spread Sheet
 existing_data = conn.read(worksheet="berita", usecols=list(range(3)), ttl=5)
 existing_data = existing_data.dropna(how="all")
 
 # Text Processing
-# Membuat Fungsi CaseFolding
+# CaseFolding
 import re
 def casefolding(text):
   text = text.lower()                                   # Mengubah huruf kecil
@@ -24,7 +24,7 @@ def casefolding(text):
   text = text.strip()                                   # menghapus spasi berlebih dan karakter
   return text
 
-# Membuat Fungsi Normalisasi Teks
+# Normalisasi Teks
 key_norm = pd.read_csv('key_norm.csv')
 def text_normalize(text):
   text = ' '.join([key_norm[key_norm['singkat'] == word]['hasil'].values[0]
@@ -35,7 +35,7 @@ def text_normalize(text):
   text = str.lower(text)
   return text
 
-# Membuat fungsi Stopword Removal
+# Stopword Removal
 import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
@@ -54,18 +54,17 @@ def remove_stopword(text):
       clean_words.append(word)
   return " ".join(clean_words)
 
-# Merubah Kata menjadi Kata dasar
+# Stemming
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 
 factory = StemmerFactory()
 stemmer = factory.create_stemmer()
 
-# Membuat Fungsi untuk Stemming bahasa Indonesia
 def stemming(text):
   text = stemmer.stem(text)
   return text
 
-# Membuat fungsi untuk menggabungkan seluruh langkah text preprocessing
+# text preprocessing pipeline
 def text_preprocessing(text):
   text = casefolding(text)
   text = text_normalize(text)
@@ -73,7 +72,7 @@ def text_preprocessing(text):
   text = stemming(text)
   return text
 
-#load save model
+# load save model
 model_NB = pickle.load(open('model_NB.sav', 'rb'))
 
 model_SVM = pickle.load(open('model_SVM.sav', 'rb'))
@@ -82,15 +81,108 @@ tfidf = TfidfVectorizer
 
 loaded_vec = TfidfVectorizer(decode_error='replace', vocabulary = set(pickle.load(open('new_selected_feature_tf-idf.sav', 'rb'))))
 
-# bikin side bar
+
 
 # Judul halaman
-st.title('klasifikasi Berita Pemilu')
+st.title('CekBeritaPemilu.ID')
 
-# Bikin menu sidebar
-menu = st.sidebar.selectbox('Pilih Fungsi',('Klasifikasi', 'History'))
+# Navbar
+selected = option_menu(
+  menu_title=None,
+  options=["Beranda", "Klasifikasi", "Riwayat"],
+  icons=['house', 'hr', 'clock-history'],
+  orientation="horizontal"
+)
 
-if menu == 'Klasifikasi' :
+# Beranda
+if selected == "Beranda" :
+# Tentang Kami
+  st.subheader('Tentang Kami')
+  st.markdown('CekBeritaPemilu.ID merupakan platform yang dirancang dan dikembangkan untuk mengklasifikasi berita mengenai pemilu yang tersebar di masyarakat dan dilabeli kedalam berita benar dan berita salah, dengan mengguanakan metode _Text Mining_ untuk mengolah data teks dan diklasifikasikan menggunakan metode _Naive Bayes_ dan _Support Vector Machine_, data teks akan diklasifikasikan secara otomatis dan akurat kedalam berita benar dan berita salah.')
+# Metode yang Digunakan
+  st.subheader('Metode yang Digunakan')
+  st.markdown('_Text Mining_ merupakan proses pengolahan data berupa teks untuk mendapatkan informasi dari hasil pengolahan data teks tersebut, proses _Text Mining_ yang dilakukan pada program ini terdiri dari proses berikut :')
+# Text Processing
+  with st.expander("Text Processing"):
+    st.write('''
+             <ul>  
+                <li>
+                  <b>Case Folding</b>
+                  <p>
+                    Proses penyeragaman data teks untuk mengoptimalkan pengolahan data teks, proses Case Folding yang dilakukan diantaranya :
+                    <ul>
+                      <li>Mengubah huruf menjadi huruf kecil</li>
+                      <li>Menghapus Hyperlink</li>
+                      <li>Menghapus tanda koma</li>
+                      <li>menghapus angka</li>
+                      <li>Menghapus semua spasi dan karakter yang bukan huruf</li>
+                    </ul>
+                  </p>
+                </li>
+             
+                <li>
+                  <b>Normalisasi Teks</b>
+                  <p>
+                    Proses penyaringan kata-kata singkatan dan kurang jelas didalam dataset menjadi kata-kata yang lebih lengkap.
+                  </p>
+                </li>
+             
+                <li>
+                  <b>Stopword Removal</b>
+                  <p>
+                    Proses penyaringan kata-kata sambung dan umum yang sering muncul dalam kalimat, tetapi tidak memberikan informasi yang penting mengenai data tersebut. proses ini menggunakan library stopwords indonesia.
+                  </p>
+                </li>
+             
+                <li>
+                  <b>Stemming</b>
+                  <p>
+                    Proses pengubahan bentuk kata menjadi kata dasar tanpa imbuhan. proses ini menggunakan library sastrawi.
+                  </p>
+                </li>
+             </ul>''', unsafe_allow_html=True)
+    
+# TfIdf vectorizer
+  with st.expander("TFIDF Vectorizer"):
+    st.write('''Proses Pembobotan kata dari kata yang sering muncul didalam dataset
+             <ul>
+                <li>
+                  <b>TF(Term Frequency)</b>
+                  <p>Proses ini menghitung seberapa sering suatu kata/token yang muncul di dalam dokumen.</p>
+                </li>
+                <li>
+                  <b>IDF(Invers Document Frequency)</b>
+                  <p>Proses ini menilai seberapa penting suatu kata/token.</p>
+                </li>
+             </ul>
+             ''', unsafe_allow_html=True)
+
+# Modeling
+  with st.expander("Modeling"):
+    st.write('''Proses untuk mengklasifikasi data yang telah dimasukan menggunakan metode klasifikasi yang digunakan, yaitu :
+             <ul>
+                <li>
+                  <b>Naive Bayes</b>
+                  <p>
+                    Metode klasifikasi dengan menggunakan metode probabilitas dan statistik untuk memprediksi peluang di masa depan berdasarkan pengalaman di masa sebelumnya. Ciri utama dari Naïve Bayes Classifier ini adalah asumsi yg sangat kuat (naïf) akan independensi dari masing-masing kondisi/kejadian.
+                  </p>
+                </li>
+             </ul>
+             <ul>
+                <li>
+                  <b>Support Vector Machine</b>
+                  <p>
+                    Metode Klasifikasi yang bekerja atas prinsip Structural Risk Minimization(SRM) dengan tujuan menemukan hyperplane terbaik yang memisahkan dua buah class pada input space.
+                  </p>
+                </li>
+             </ul>
+             ''', unsafe_allow_html= True)
+ 
+
+  
+# klasifikasi
+if selected == "Klasifikasi" :
+  st.subheader("Cek Berita")
 # Input Berita
   teks = st.text_input('Masukan Teks Berita')
   input = text_preprocessing(teks)
@@ -137,9 +229,9 @@ if menu == 'Klasifikasi' :
     #hasil
     st.success(f'Prediksi Naive Bayes = {detect_NB}')
     st.success(f'Prediksi Support Vector Machine = {detect_SVM}')
-    st.success("data spreadsheet sudah di perbarui")
     
 # menunjukan hasil
-if menu == 'History':
+if selected == "Riwayat":
+  st.subheader("Hasil Cek Berita")
   st.dataframe(existing_data)
   # delete
