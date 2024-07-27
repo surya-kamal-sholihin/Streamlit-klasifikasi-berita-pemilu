@@ -5,12 +5,17 @@ from streamlit_option_menu import option_menu
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
+from streamlit import type_util
 
 # database Google Spread Sheets
 conn = st.connection('gsheets', type=GSheetsConnection)
 
 existing_data = conn.read(worksheet="berita", usecols=list(range(3)), ttl=5)
 existing_data = existing_data.dropna(how="all")
+
+
+convert_anything_to_df = type_util.convert_anything_to_df
+is_dataframe_compatible = type_util.is_dataframe_compatible
 
 # Text Processing
 # CaseFolding
@@ -194,19 +199,19 @@ if selected == "Klasifikasi" :
     #Fungsi Prediksi SVM
     predict_NB = model_NB.predict(loaded_vec.fit_transform([input]))
 
-    if (predict_NB == 0):
+    if (predict_NB == 'Negatif'):
       detect_NB = 'Fake News'
 
-    elif (predict_NB == 1):
+    elif (predict_NB == 'Positif'):
       detect_NB = 'Real News'
     
     #Fungsi Prediksi SVM
     dense_data_input = loaded_vec.fit_transform([input]).toarray()
     predict_SVM = model_SVM.predict(dense_data_input)
 
-    if (predict_SVM == 0):
+    if (predict_SVM == 'Negatif'):
       detect_SVM = 'Fake News'
-    if (predict_SVM == 1):
+    if (predict_SVM == 'Positif'):
       detect_SVM = 'Real News'
 
     # memasukan data ke dataBaru
