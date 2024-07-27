@@ -5,7 +5,17 @@ from streamlit_option_menu import option_menu
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
-from streamlit import type_util
+
+def convert_anything_to_df(data):
+    if isinstance(data, pd.DataFrame):
+        return data
+    elif isinstance(data, list):
+        return pd.DataFrame(data)
+    else:
+        raise ValueError("Data format not supported")
+
+def is_dataframe_compatible(data):
+    return isinstance(data, (pd.DataFrame, list))
 
 # database Google Spread Sheets
 conn = st.connection('gsheets', type=GSheetsConnection)
@@ -13,9 +23,6 @@ conn = st.connection('gsheets', type=GSheetsConnection)
 existing_data = conn.read(worksheet="berita", usecols=list(range(3)), ttl=5)
 existing_data = existing_data.dropna(how="all")
 
-
-convert_anything_to_df = type_util.convert_anything_to_df
-is_dataframe_compatible = type_util.is_dataframe_compatible
 
 # Text Processing
 # CaseFolding
