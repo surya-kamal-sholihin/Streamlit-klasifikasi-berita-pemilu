@@ -5,6 +5,5 @@ scikit-learn
 nltk
 sastrawi
 pip == 22.2.2
-mysql-connector-python == 8.3.0
-st-gsheets-connection
+snowflake-snowpark-python
 streamlit_option_menu

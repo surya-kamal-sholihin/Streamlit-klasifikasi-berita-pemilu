@@ -2,28 +2,30 @@
 import pickle
 import streamlit as st
 from streamlit_option_menu import option_menu
-from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
+import snowflake.snowpark as snowpark
+from snowflake.snowpark.types import StructType, StructField, StringType
 
-def convert_anything_to_df(data):
-    if isinstance(data, pd.DataFrame):
-        return data
-    elif isinstance(data, list):
-        return pd.DataFrame(data)
-    else:
-        raise ValueError("Data format not supported")
+# Define a function to create a Snowpark session
+connection_parameters = {
+    'account': st.secrets["snowflake"]["account"],
+    'user': st.secrets["snowflake"]["user"],
+    'password': st.secrets["snowflake"]["password"],
+    'role': st.secrets["snowflake"]["role"],
+    'warehouse': st.secrets["snowflake"]["warehouse"],
+    'database': st.secrets["snowflake"]["database"],
+    'schema': st.secrets["snowflake"]["schema"]
+}
+session = snowpark.Session.builder.configs(connection_parameters).create()
 
-def is_dataframe_compatible(data):
-    return isinstance(data, (pd.DataFrame, list))
-
-# database Google Spread Sheets
-conn = st.connection('gsheets', type=GSheetsConnection)
-
-existing_data = conn.read(worksheet="berita", usecols=list(range(3)), ttl=5)
-existing_data = existing_data.dropna(how="all")
-
-
+# Define the schema for the dummy data
+schema = StructType([
+    StructField("BERITA", StringType()),
+    StructField("HASILNB", StringType()),
+    StructField("HASILSVM", StringType())
+])
+    
 # Text Processing
 # CaseFolding
 import re
@@ -225,25 +227,27 @@ if selected == "Klasifikasi" :
     dataBaru = pd.DataFrame(
       [
         {
-          "Berita" : teks,
-          "HasilNB" : detect_NB,
-          "HasilSVM" : detect_SVM
+          "BERITA" : teks,
+          "HASILNB" : detect_NB,
+          "HASILSVM" : detect_SVM
         }
       ]
     )
 
-    # menggabungkan dataBaru ke dalam data sekarang
-    updated_df = pd.concat([existing_data, dataBaru], ignore_index=True)
+    # Update the Snowflake table with the combined data
+    session.write_pandas(dataBaru, "BERITA")
 
-    # update data spread sheet dengan data sekarang
-    conn.update(worksheet="berita", data=updated_df)
-    
     #hasil
     st.success(f'Prediksi Naive Bayes = {detect_NB}')
     st.success(f'Prediksi Support Vector Machine = {detect_SVM}')
     
 # menunjukan hasil
 if selected == "Riwayat":
+  # Reload the updated data to display
+  updated_db = session.table("BERITA").to_pandas()
+
   st.subheader("Hasil Cek Berita")
-  st.dataframe(existing_data)
-  # delete
+  st.dataframe(updated_db)
+
+# Close the session
+session.close()
