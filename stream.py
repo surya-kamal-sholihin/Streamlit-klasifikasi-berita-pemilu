@@ -4,27 +4,11 @@ import streamlit as st
 from streamlit_option_menu import option_menu
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
-import snowflake.snowpark as snowpark
-from snowflake.snowpark.types import StructType, StructField, StringType
+from streamlit_gsheets import GSheetsConnection
 
-# Define a function to create a Snowpark session
-connection_parameters = {
-    'account': st.secrets["snowflake"]["account"],
-    'user': st.secrets["snowflake"]["user"],
-    'password': st.secrets["snowflake"]["password"],
-    'role': st.secrets["snowflake"]["role"],
-    'warehouse': st.secrets["snowflake"]["warehouse"],
-    'database': st.secrets["snowflake"]["database"],
-    'schema': st.secrets["snowflake"]["schema"]
-}
-session = snowpark.Session.builder.configs(connection_parameters).create()
-
-# Define the schema for the dummy data
-schema = StructType([
-    StructField("BERITA", StringType()),
-    StructField("HASILNB", StringType()),
-    StructField("HASILSVM", StringType())
-])
+# sambungin database gsheet
+conn = st.connection("gsheets", type=GSheetsConnection)
+df = conn.read(worksheet="berita", usecols=list(range(3)), ttl=5)
     
 # Text Processing
 # CaseFolding
@@ -227,15 +211,17 @@ if selected == "Klasifikasi" :
     dataBaru = pd.DataFrame(
       [
         {
-          "BERITA" : teks,
-          "HASILNB" : detect_NB,
-          "HASILSVM" : detect_SVM
+          "Berita" : teks,
+          "HasilNB" : detect_NB,
+          "HasilSVM" : detect_SVM
         }
       ]
     )
 
-    # Update the Snowflake table with the combined data
-    session.write_pandas(dataBaru, "BERITA")
+    # Update gsheet data
+    update_df = pd.concat([df, dataBaru], ignore_index=True)
+
+    conn.update(worksheet='berita', data=update_df.reset_index(drop=True))
 
     #hasil
     st.success(f'Prediksi Naive Bayes = {detect_NB}')
@@ -243,11 +229,5 @@ if selected == "Klasifikasi" :
     
 # menunjukan hasil
 if selected == "Riwayat":
-  # Reload the updated data to display
-  updated_db = session.table("BERITA").to_pandas()
-
   st.subheader("Hasil Cek Berita")
-  st.dataframe(updated_db)
-
-# Close the session
-session.close()
+  st.dataframe(df)
